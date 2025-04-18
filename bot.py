@@ -28,14 +28,12 @@ async def on_ready():
     print(f"✅ Logged in as {bot.user} (ID: {bot.user.id})")
     # Sync commands—also indented by 4 spaces
     synced = await bot.tree.sync()
-    print(f"🌐 Synced {len(synced)} global slash commands.")
+     print(f"🌐 Synced {len(synced)} global slash commands")
 
 # Load all cogs dynamically from the cogs folder
 async def load_all_cogs():
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py") and not filename.startswith("_"):
-            cog_name = f"cogs.{filename[:-3]}"  # Remove .py extension
-            try:
+    for fn in os.listdir("./cogs"):
+        if fn.endswith(".py") and not fn.startswith("_"):
                 await bot.load_extension(cog_name)
                 print(f"✅ Loaded cog: {filename}")
             except Exception as e:
