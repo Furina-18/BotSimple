@@ -21,7 +21,7 @@ def start_flask_server():
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=443, ssl_context=('cert.pem', 'key.pem'))
 
-def keep_alive():
+def start_web():
     thread = Thread(target=run)
     thread.start()
     
