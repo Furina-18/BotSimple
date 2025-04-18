@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 class ReactionRole(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        
+
+     @app_commands.command(name="add react role", description="create a react role)
     @commands.Cog.listener()
     async def on_ready(self):
         logger.info("ReactionRole cog loaded")
