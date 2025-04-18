@@ -3,6 +3,8 @@ from discord.ext import commands
 import os
 import asyncio
 from dotenv import load_dotenv
+from keep_alive import keep_alive  # if in separate file
+keep_alive()
 
 # Load environment variables from .env file
 load_dotenv()
