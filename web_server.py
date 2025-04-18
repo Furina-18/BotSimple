@@ -21,11 +21,10 @@ def home():
 def start_flask_server():
     # Start Flask app with HTTPS
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=443, ssl_context=('cert.pem', 'key.pem'))
+    app.run(host="0.0.0.0", port=port)
 
 def start_web():
-    thread = Thread(target=start_flask_server)
-    thread.start()
+    Thread(target=start_flask_server, daemon=True).start()
     
 def start_discord_bot():
     # Run the Discord bot in a separate thread
