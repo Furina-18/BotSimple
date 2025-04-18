@@ -15,8 +15,13 @@ class General(commands.Cog):
     """
 
     def __init__(self, bot):
-        self.bot = bot
 
+    @app_commands.command(name="ping", description="Check if the bot is online")
+    async def ping(self, interaction: discord.Interaction):
+        await interaction.response.send_message("Pong!")
+
+async def setup(bot):
+    await bot.add_cog(General(bot))
     # logic is split to uconnect() for wide usage
     @commands.command(name='connect', description=config.HELP_CONNECT_LONG, help=config.HELP_CONNECT_SHORT, aliases=['c'])
     async def _connect(self, ctx):  # dest_channel_name: str
