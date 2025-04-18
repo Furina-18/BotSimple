@@ -23,6 +23,14 @@ def run_web():
 
 # Start the web server in a separate thread BEFORE starting the bot
 threading.Thread(target=run_web).start()
+#Define intents
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.members = True
+intents.voice_states = True
+#Define bot
+bot = commands.Bot(command_prefix="!", intents=intents)
 # Load environment variables
 load_dotenv()
 # Then run your bot
@@ -37,11 +45,7 @@ if __name__ == "__main__":
 
     asyncio.run(main())
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.guilds = True
-intents.members = True
-intents.voice_states = True
+
 
 bot.load_extension("cogs")  # Loads all cogs via __init__.py
 
