@@ -4,3 +4,9 @@ python-dotenv>=0.19.2
 flask-sslify>=0.1
 flask>=2.0.2
 yt_dlp
+py-cord
+py-cord[voice]
+aiohttp
+asyncio
+beautifulsoup4
+spotipy
