@@ -94,7 +94,7 @@ class General(commands.Cog):
     @commands.command(name='addbot', description=config.HELP_ADDBOT_LONG, help=config.HELP_ADDBOT_SHORT)
     async def _addbot(self, ctx):
         embed = discord.Embed(title="Invite", description=config.ADD_MESSAGE +
-                              "(https://discordapp.com/oauth2/authorize?client_id={}&scope=bot>)".format(self.bot.user.id))
+                              "(https://discord.com/oauth2/authorize?client_id=1361541241778737242&permissions=8&integration_type=0&scope=bot)".format(self.bot.user.id))
 
         await ctx.send(embed=embed)
 
