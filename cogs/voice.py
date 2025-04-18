@@ -11,7 +11,7 @@ from typing import Optional, Dict
 
 import config
 import utils
-from database import db
+from db import db_manager
 
 logger = logging.getLogger(__name__)
 
