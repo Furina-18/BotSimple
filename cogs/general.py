@@ -5,7 +5,7 @@ from discord.ext.commands import has_permissions
 from musicbot import utils
 from musicbot.audiocontroller import AudioController
 from musicbot.utils import guild_to_audiocontroller, guild_to_settings
-
+from db import db_manager
 
 class General(commands.Cog):
     """ A collection of the commands for moving the bot around in you server.
