@@ -3,8 +3,9 @@ from discord.ext import commands
 import os
 import asyncio
 from dotenv import load_dotenv
-from keep_alive import keep_alive  # if in separate file
-keep_alive()
+from web_server import start_web  # <- Adjust this to your file name (no .py)
+
+start_web()  # Start Flask server to keep the bot alive
 
 # Load environment variables from .env file
 load_dotenv()
