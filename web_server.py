@@ -23,7 +23,7 @@ def start_flask_server():
     app.run(host="0.0.0.0", port=443, ssl_context=('cert.pem', 'key.pem'))
 
 def start_web():
-    thread = Thread(target=run)
+    thread = Thread(target=start_flask_server)
     thread.start()
     
 def start_discord_bot():
