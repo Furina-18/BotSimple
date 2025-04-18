@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from db import db_manager
 
 class Ticket(commands.Cog):
     def __init__(self, bot):
