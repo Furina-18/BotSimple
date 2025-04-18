@@ -46,8 +46,18 @@ if __name__ == "__main__":
     asyncio.run(main())
 
 
-
 bot.load_extension("cogs")  # Loads all cogs via __init__.py
+
+#Show cogs
+@bot.event
+async def on_ready():
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} slash command(s).")
+    except Exception as e:
+        print(f"❌ Failed to sync commands: {e}")
+
+    print(f"🟢 Bot is ready - {bot.user}")
 
 class MyBot(commands.Bot):
     def __init__(self):
