@@ -84,5 +84,11 @@ async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("Pong!")
 
 if __name__ == "__main__":
+    import asyncio
+
+    async def main():
+        await bot.start(os.getenv("TOKEN"))
+
+    asyncio.run(main())
     if TOKEN is None:
         raise ValueError("TOKEN not found in environment variables.")
