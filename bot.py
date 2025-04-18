@@ -41,6 +41,8 @@ intents.guilds = True
 intents.members = True
 intents.voice_states = True
 
+bot.load_extension("cogs")  # Loads all cogs via __init__.py
+
 class MyBot(commands.Bot):
     def __init__(self):
         super().__init__(
