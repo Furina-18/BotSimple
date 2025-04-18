@@ -31,7 +31,6 @@ async def on_ready():
         print(f"Failed to sync commands: {e}")
 
     print(f"✅ Logged in as {bot.user} (ID: {bot.user.id})")
-
 # Load all cogs dynamically from the cogs folder
 async def load_all_cogs():
     for fn in os.listdir("./cogs"):
