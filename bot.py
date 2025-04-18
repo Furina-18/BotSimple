@@ -23,7 +23,17 @@ def run_web():
 threading.Thread(target=run_web).start()
 # Load environment variables
 load_dotenv()
-TOKEN = os.getenv("TOKEN")
+# Then run your bot
+if __name__ == "__main__":
+    import asyncio
+
+    async def main():
+        try:
+            await bot.start(os.getenv("TOKEN"))
+        except Exception as e:
+            print(f"Error while running bot: {e}")
+
+    asyncio.run(main())
 
 intents = discord.Intents.default()
 intents.message_content = True
