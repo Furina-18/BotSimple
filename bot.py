@@ -6,6 +6,8 @@ import asyncio
 from dotenv import load_dotenv
 from db import DatabaseManager  # Make sure this file exists and is correct
 import logging
+import threading
+from flask import Flask
 
 # Load environment variables
 load_dotenv()
