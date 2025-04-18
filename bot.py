@@ -3,25 +3,24 @@ from discord.ext import commands
 import os
 import asyncio
 from dotenv import load_dotenv
-from web_server import start_web  # <- Adjust this to your file name (no .py)
+from web_server import start_web  # Flask keepalive server
 
-start_web()  # Start Flask server to keep the bot alive
+start_web()  # Start the web server
 
 # Load environment variables from .env file
 load_dotenv()
-
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Bot intents setup
+# Intents setup
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.voice_states = True
 
-# Define the bot
+# Create the bot
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Event when the bot is ready
+# Event: When the bot is ready
 @bot.event
 async def on_ready():
     try:
@@ -31,16 +30,19 @@ async def on_ready():
         print(f"Failed to sync commands: {e}")
 
     print(f"✅ Logged in as {bot.user} (ID: {bot.user.id})")
-# Load all cogs dynamically from the cogs folder
+
+# Dynamically load all cogs in /cogs folder
 async def load_all_cogs():
-    for fn in os.listdir("./cogs"):
-        if fn.endswith(".py") and not fn.startswith("_"):
+    for filename in os.listdir("./cogs"):
+        if filename.endswith(".py") and not filename.startswith("_"):
+            cog_name = f"cogs.{filename[:-3]}"
+            try:
                 await bot.load_extension(cog_name)
                 print(f"✅ Loaded cog: {filename}")
             except Exception as e:
                 print(f"❌ Failed to load cog {filename}: {e}")
 
-# Start the bot
+# Main entry point
 async def main():
     async with bot:
         await load_all_cogs()
