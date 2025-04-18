@@ -6,7 +6,8 @@ import asyncio
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
-from db import db_manager
+from db import db_manager  # Import the DatabaseManager
+
 YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
 FFMPEG_OPTIONS = {'options': '-vn'}
 
@@ -18,7 +19,6 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = {}
-        self.repeat_mode = {}  # {guild_id: 'none' | 'once' | 'infinite'}
         self.current_song = {}
 
     def yt_search(self, query):
@@ -47,20 +47,20 @@ class Music(commands.Cog):
 
     async def play_next(self, ctx):
         guild_id = ctx.guild.id
-        if self.repeat_mode.get(guild_id) == "once":
-            self.queue[guild_id].insert(0, self.current_song[guild_id])
-        elif self.repeat_mode.get(guild_id) == "infinite":
-            self.queue[guild_id].append(self.current_song[guild_id])
-
+        if guild_id not in self.queue:
+            return
         if self.queue[guild_id]:
             data = self.queue[guild_id].pop(0)
             self.current_song[guild_id] = data
-            ctx.voice_client.play(
-                discord.FFmpegPCMAudio(data['source'], **FFMPEG_OPTIONS),
-                after=lambda e: asyncio.run_coroutine_threadsafe(
-                    self.play_next(ctx), self.bot.loop
+            try:
+                ctx.voice_client.play(
+                    discord.FFmpegPCMAudio(data['source'], **FFMPEG_OPTIONS),
+                    after=lambda e: asyncio.run_coroutine_threadsafe(
+                        self.play_next(ctx), self.bot.loop
+                    )
                 )
-            )
+            except Exception as e:
+                print(f"Error playing next song: {e}")
 
     async def ensure_voice(self, interaction):
         if not interaction.user.voice:
@@ -104,80 +104,103 @@ class Music(commands.Cog):
         self.queue.setdefault(guild_id, [])
 
         # Spotify or YouTube?
-        if "spotify.com" in url:
-            songs = self.get_spotify_tracks(url)
-            if not songs:
-                await interaction.response.send_message("⚠️ Couldn't fetch Spotify tracks.")
-                return
-            for song_name in songs:
-                result = self.yt_search(song_name)
-                if result:
-                    self.queue[guild_id].append(result)
-            await interaction.response.send_message(f"🎶 Added {len(songs)} track(s) from Spotify.")
-        else:
-            result = self.yt_search(url)
-            if not result:
-                await interaction.response.send_message("❌ Couldn’t find the song.")
-                return
-            self.queue[guild_id].append(result)
-            await interaction.response.send_message(f"🎧 Queued: **{result['title']}**")
+        try:
+            if "spotify.com" in url:
+                songs = self.get_spotify_tracks(url)
+                if not songs:
+                    await interaction.response.send_message("⚠️ Couldn't fetch Spotify tracks.")
+                    return
+                for song_name in songs:
+                    result = self.yt_search(song_name)
+                    if result:
+                        self.queue[guild_id].append(result)
+                await interaction.response.send_message(f"🎶 Added {len(songs)} track(s) from Spotify.")
+            else:
+                result = self.yt_search(url)
+                if not result:
+                    await interaction.response.send_message("❌ Couldn’t find the song.")
+                    return
+                self.queue[guild_id].append(result)
+                await interaction.response.send_message(f"🎧 Queued: **{result['title']}**")
 
-        if not vc.is_playing():
-            song = self.queue[guild_id].pop(0)
-            self.current_song[guild_id] = song
-            vc.play(
-                discord.FFmpegPCMAudio(song['source'], **FFMPEG_OPTIONS),
-                after=lambda e: asyncio.run_coroutine_threadsafe(
-                    self.play_next(interaction), self.bot.loop
+            await db_manager.set_queue(guild_id, [song['title'] for song in self.queue[guild_id]])
+
+            if not vc.is_playing():
+                song = self.queue[guild_id].pop(0)
+                self.current_song[guild_id] = song
+                vc.play(
+                    discord.FFmpegPCMAudio(song['source'], **FFMPEG_OPTIONS),
+                    after=lambda e: asyncio.run_coroutine_threadsafe(
+                        self.play_next(interaction), self.bot.loop
+                    )
                 )
-            )
-            await interaction.followup.send(f"▶️ Now playing: **{song['title']}**")
+                await interaction.followup.send(f"▶️ Now playing: **{song['title']}**")
+        except Exception as e:
+            print(f"Error in play command: {e}")
+            await interaction.response.send_message("❌ An error occurred while trying to play the song.")
 
     @app_commands.command(name="queue", description="Show current music queue.")
     async def show_queue(self, interaction: discord.Interaction):
-        q = self.queue.get(interaction.guild.id, [])
-        if not q:
-            await interaction.response.send_message("🪹 Queue is empty.")
-        else:
-            msg = "\n".join([f"{idx+1}. {song['title']}" for idx, song in enumerate(q)])
-            await interaction.response.send_message(f"🎶 Queue:\n{msg}")
+        try:
+            q = await db_manager.get_queue(interaction.guild.id)
+            if not q:
+                await interaction.response.send_message("🪹 Queue is empty.")
+            else:
+                msg = "\n".join([f"{idx+1}. {song}" for idx, song in enumerate(q)])
+                await interaction.response.send_message(f"🎶 Queue:\n{msg}")
+        except Exception as e:
+            print(f"Error fetching queue: {e}")
+            await interaction.response.send_message("❌ Could not retrieve the queue.")
 
     @app_commands.command(name="skip", description="Skip the current song.")
     async def skip(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
-        if vc and vc.is_playing():
-            vc.stop()
-            await interaction.response.send_message("⏭️ Skipped.")
-        else:
-            await interaction.response.send_message("❌ Nothing is playing.")
+        try:
+            if vc and vc.is_playing():
+                vc.stop()
+                await interaction.response.send_message("⏭️ Skipped.")
+            else:
+                await interaction.response.send_message("❌ Nothing is playing.")
+        except Exception as e:
+            print(f"Error skipping song: {e}")
+            await interaction.response.send_message("❌ An error occurred while trying to skip the song.")
 
     @app_commands.command(name="pause", description="Pause the music.")
     async def pause(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
-        if vc and vc.is_playing():
-            vc.pause()
-            await interaction.response.send_message("⏸️ Paused.")
-        else:
-            await interaction.response.send_message("❌ Nothing to pause.")
+        try:
+            if vc and vc.is_playing():
+                vc.pause()
+                await interaction.response.send_message("⏸️ Paused.")
+            else:
+                await interaction.response.send_message("❌ Nothing to pause.")
+        except Exception as e:
+            print(f"Error pausing music: {e}")
+            await interaction.response.send_message("❌ An error occurred while trying to pause the music.")
 
     @app_commands.command(name="resume", description="Resume paused music.")
     async def resume(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
-        if vc and vc.is_paused():
-            vc.resume()
-            await interaction.response.send_message("▶️ Resumed.")
-        else:
-            await interaction.response.send_message("❌ Nothing to resume.")
+        try:
+            if vc and vc.is_paused():
+                vc.resume()
+                await interaction.response.send_message("▶️ Resumed.")
+            else:
+                await interaction.response.send_message("❌ Nothing to resume.")
+        except Exception as e:
+            print(f"Error resuming music: {e}")
+            await interaction.response.send_message("❌ An error occurred while trying to resume the music.")
 
     @app_commands.command(name="repeat", description="Set repeat mode.")
     @app_commands.describe(mode="none | once | infinite")
     async def repeat(self, interaction: discord.Interaction, mode: str):
-        mode = mode.lower()
-        if mode not in ["none", "once", "infinite"]:
-            await interaction.response.send_message("❌ Invalid mode. Use: none, once, infinite")
-            return
-        self.repeat_mode[interaction.guild.id] = mode
-        await interaction.response.send_message(f"🔁 Repeat mode set to `{mode}`.")
-
-async def setup(bot):
-    await bot.add_cog(Music(bot))
+        try:
+            mode = mode.lower()
+            if mode not in ["none", "once", "infinite"]:
+                await interaction.response.send_message("❌ Invalid mode. Use: none, once, infinite")
+                return
+            await db_manager.set_repeat_mode(interaction.guild.id, mode)
+            await interaction.response.send_message(f"🔁 Repeat mode set to `{mode}`.")
+        except Exception as e:
+            print(f"Error setting repeat mode: {e}")
+            await interaction.response.send_message("❌ An error occurred while setting repeat mode.")
