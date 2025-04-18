@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import asyncio
 import random
+from db import db_manager
 
 class Giveaway(commands.Cog):
     def __init__(self, bot):
