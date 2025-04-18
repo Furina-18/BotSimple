@@ -8,6 +8,8 @@ from db import DatabaseManager  # Make sure this file exists and is correct
 import logging
 import threading
 from flask import Flask
+import logging
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
