@@ -13,13 +13,19 @@ class Music(commands.Cog):
     def get_queue(self, guild_id):
         return self.queues.setdefault(guild_id, asyncio.Queue())
 
-    @app_commands.command(name="join", description="Bot joins your voice channel")
+   @app_commands.command(name="join", description="Bot joins your voice channel")
     async def join(self, interaction: discord.Interaction):
-        vc = interaction.user.voice
-        if not vc or not vc.channel:
-            return await interaction.response.send_message("You're not in a voice channel!", ephemeral=True)
-        await vc.channel.connect()
-        await interaction.response.send_message(f"✅ Joined {vc.channel.name}!")
+        voice_channel = interaction.user.voice.channel if interaction.user.voice else None
+
+        if not voice_channel:
+            return await interaction.response.send_message("❌ You must be in a voice channel to use this.", ephemeral=True)
+
+        if interaction.guild.voice_client:
+            await interaction.guild.voice_client.move_to(voice_channel)
+        else:
+            await voice_channel.connect()
+
+        await interaction.response.send_message(f"🔊 Joined {voice_channel.name}!", ephemeral=True)
 
     @app_commands.command(name="leave", description="Bot leaves the voice channel")
     async def leave(self, interaction: discord.Interaction):
