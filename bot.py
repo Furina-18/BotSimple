@@ -30,8 +30,6 @@ async def on_ready():
         # Sync slash commands globally
         ssynced = await bot.tree.sync()
     print(f"🌐 Synced {len(synced)} commands globally.")
-    except Exception as e:
-        print(f"❌ Error syncing commands: {e}")
 
 # Load all cogs dynamically from the cogs folder
 async def load_all_cogs():
