@@ -6,7 +6,7 @@ import asyncio
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import os
-
+from db import db_manager
 YDL_OPTIONS = {'format': 'bestaudio', 'noplaylist': 'True'}
 FFMPEG_OPTIONS = {'options': '-vn'}
 
