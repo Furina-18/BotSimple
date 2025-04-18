@@ -24,11 +24,14 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Event when the bot is ready
 @bot.event
 async def on_ready():
-    # This line is indented by 4 spaces
+    try:
+        synced = await bot.tree.sync()
+        print(f"🌐 Synced {len(synced)} global slash commands")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
+
     print(f"✅ Logged in as {bot.user} (ID: {bot.user.id})")
-    # Sync commands—also indented by 4 spaces
-    synced = await bot.tree.sync()
-     print(f"🌐 Synced {len(synced)} global slash commands")
+
 
 # Load all cogs dynamically from the cogs folder
 async def load_all_cogs():
