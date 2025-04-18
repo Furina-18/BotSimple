@@ -33,20 +33,8 @@ intents.voice_states = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 # Load environment variables
 load_dotenv()
-# Then run your bot
-if __name__ == "__main__":
-    import asyncio
-
-    async def main():
-        try:
-            await bot.start(os.getenv("TOKEN"))
-        except Exception as e:
-            print(f"Error while running bot: {e}")
-
-    asyncio.run(main())
-
-
-bot.load_extension("cogs")  # Loads all cogs via __init__.py
+# Loads all cogs via __init__.py
+bot.load_extension("cogs") 
 
 #Show cogs
 @bot.event
@@ -58,6 +46,18 @@ async def on_ready():
         print(f"❌ Failed to sync commands: {e}")
 
     print(f"🟢 Bot is ready - {bot.user}")
+# Then run your bot
+@bot.event
+async def setup_hook():
+    await load()
+    await bot.tree.sync()  # Sync slash commands
+
+if __name__ == "__main__":
+    async def main():
+        async with bot:
+            await bot.start(os.getenv("TOKEN"))
+
+    asyncio.run(main())
 
 class MyBot(commands.Bot):
     def __init__(self):
