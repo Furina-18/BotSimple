@@ -1,8 +1,9 @@
 import os
 import asyncio
+import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from keep_alive import keep_alive  # optional, for uptime robot pings
+from keep_alive import keep_alive  # Optional
 
 load_dotenv()
 
@@ -27,10 +28,8 @@ async def start_bot():
     await load_cogs()
     await bot.start(os.getenv("TOKEN"))
 
-# Web ping for UptimeRobot (if you're using it)
-keep_alive()
+keep_alive()  # Comment this out if you're not using UptimeRobot or Flask server
 
-# Use this for Render: prevents crash when already in an event loop
 try:
     asyncio.run(start_bot())
 except RuntimeError:
