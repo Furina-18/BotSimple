@@ -2,34 +2,46 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from keep_alive import keep_alive  # if you’re pinging UptimeRobot
+from keep_alive import keep_alive  # your Flask keep‑alive
 
-# 1) Load & check token
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 if not TOKEN:
-    raise RuntimeError("❌ TOKEN not found! Set TOKEN in .env or in your Render environment variables.")
+    raise RuntimeError("❌ Missing TOKEN in .env or environment variables.")
 
-# 2) Define bot & intents
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix="!", intents=intents)
 
-# 3) Load cogs on startup
+class MyBot(commands.Bot):
+    def __init__(self):
+        super().__init__(
+            command_prefix="!",
+            intents=intents,
+            application_id=os.getenv("APPLICATION_ID")  # optional
+        )
+
+    async def setup_hook(self):
+        # 1) Load all cogs
+        for filename in os.listdir("cogs"):
+            if filename.endswith(".py") and filename != "__init__.py":
+                path = f"cogs.{filename[:-3]}"
+                try:
+                    await self.load_extension(path)
+                    print(f"✅ Loaded cog: {filename}")
+                except Exception as e:
+                    print(f"❌ Failed to load cog {filename}: {e}")
+
+        # 2) Sync slash commands globally
+        synced = await self.tree.sync()
+        print(f"⚡ Synced {len(synced)} slash commands.")
+
+bot = MyBot()
+
 @bot.event
 async def on_ready():
-    for fn in os.listdir("./cogs"):
-        if fn.endswith(".py") and fn != "__init__.py":
-            try:
-                await bot.load_extension(f"cogs.{fn[:-3]}")
-                print(f"✅ Loaded cog {fn}")
-            except Exception as e:
-                print(f"❌ Failed to load {fn}: {e}")
-    print(f"▶️ Logged in as {bot.user} (ID: {bot.user.id})")
+    print(f"▶️ Bot is online as {bot.user} (ID: {bot.user.id})")
 
-# 4) (Optional) kick off the keep‑alive server
+# start the keep‑alive webserver (Render/UptimeRobot)
 keep_alive()
 
-# 5) **This is what actually starts your bot**
-print("⚙️ TOKEN repr:", repr(TOKEN))
-print("⚙️ TOKEN length:", len(TOKEN or ""))
+# finally run the bot
 bot.run(TOKEN)
