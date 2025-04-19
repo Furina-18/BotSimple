@@ -1,110 +1,40 @@
+import os
 import discord
 from discord.ext import commands
 from discord import app_commands
-import os
-import asyncio
+from keep_alive import keep_alive
 from dotenv import load_dotenv
-from db import DatabaseManager  # Make sure this file exists and is correct
-import logging
-import threading
-from flask import Flask
-import logging
-logging.basicConfig(level=logging.INFO)
+import asyncio
 
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return 'Discord bot is running!'
-
-def run_web():
-    port = int(os.environ.get("PORT", 8080))  # Required by Render
-    app.run(host='0.0.0.0', port=port)
-
-# Start the web server in a separate thread BEFORE starting the bot
-threading.Thread(target=run_web).start()
-#Define intents
-intents = discord.Intents.default()
-intents.message_content = True
-intents.guilds = True
-intents.members = True
-intents.voice_states = True
-#Define bot
-bot = commands.Bot(command_prefix="!", intents=intents)
-# Load environment variables
 load_dotenv()
-# Loads all cogs via __init__.py
-bot.load_extension("cogs") 
+TOKEN = os.getenv("TOKEN")
 
-#Show cogs
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix="!", intents=intents)
+
 @bot.event
 async def on_ready():
+    print(f"Logged in as {bot.user}")
     try:
         synced = await bot.tree.sync()
-        print(f"✅ Synced {len(synced)} slash command(s).")
+        print(f"Synced {len(synced)} slash commands.")
     except Exception as e:
-        print(f"❌ Failed to sync commands: {e}")
+        print(f"Failed to sync commands: {e}")
 
-    print(f"🟢 Bot is ready - {bot.user}")
-# Then run your bot
-@bot.event
-async def setup_hook():
-    await load()
-    await bot.tree.sync()  # Sync slash commands
-
-if __name__ == "__main__":
-    async def main():
-        async with bot:
-            await bot.start(os.getenv("TOKEN"))
-
-    asyncio.run(main())
-
-class MyBot(commands.Bot):
-    def __init__(self):
-        super().__init__(
-            command_prefix=commands.when_mentioned_or("!"),
-            intents=intents,
-            application_id=os.getenv("APPLICATION_ID")  # Optional
-        )
-        self.db: DatabaseManager | None = None
-
-    async def setup_hook(self):
-        await self.init_db()
-        await self.load_all_cogs()
-        await self.tree.sync()
-        print("Slash commands synced.")
-
-    async def init_db(self):
-        os.makedirs("data", exist_ok=True)
-        self.db = DatabaseManager("data/bot_data.db")
-        await self.db.setup()
-
-    async def load_all_cogs(self):
-        for filename in os.listdir("./cogs"):
-            if filename.endswith(".py"):
-                try:
-                    await self.load_extension(f"cogs.{filename[:-3]}")
-                    print(f"Loaded cog: {filename}")
-                except Exception as e:
-                    print(f"Failed to load cog {filename}: {e}")
-
-    async def on_ready(self):
-        print(f"Logged in as {self.user} (ID: {self.user.id})")
-        print("Bot is ready!")
-
-bot = MyBot()
-
-# Optional basic test command
-@bot.tree.command(name="ping", description="Check if the bot is alive")
+@bot.tree.command(name="ping", description="Test if bot is alive")
 async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("Pong!")
 
-if __name__ == "__main__":
-    import asyncio
+# Auto-load cogs
+async def load_cogs():
+    for filename in os.listdir("./cogs"):
+        if filename.endswith(".py") and filename != "__init__.py":
+            await bot.load_extension(f"cogs.{filename[:-3]}")
 
-    async def main():
-        await bot.start(os.getenv("TOKEN"))
+async def main():
+    async with bot:
+        await load_cogs()
+        keep_alive()
+        await bot.start(TOKEN)
 
-    asyncio.run(main())
-    if TOKEN is None:
-        raise ValueError("TOKEN not found in environment variables.")
+asyncio.run(main())
