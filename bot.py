@@ -26,10 +26,10 @@ async def on_ready():
 
 async def start_bot():
     await load_cogs()
-    bot.start(os.getenv("TOKEN"))
+   bot.run(os.getenv("TOKEN"))
 
 keep_alive()  # Comment this out if you're not using UptimeRobot or Flask server
-    bot.run(os.getenv("TOKEN")
+    
 except RuntimeError:
     import nest_asyncio
     nest_asyncio.apply()
