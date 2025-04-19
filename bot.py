@@ -2,7 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from keep_alive import keep_alive  # your Flask keep‑alive
+from keep_alive import keep_alive  # your Flask keep-alive
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -20,7 +20,7 @@ class MyBot(commands.Bot):
         )
 
     async def setup_hook(self):
-        # 1) Load all cogs
+        # Load all cogs
         for filename in os.listdir("cogs"):
             if filename.endswith(".py") and filename != "__init__.py":
                 path = f"cogs.{filename[:-3]}"
@@ -30,7 +30,7 @@ class MyBot(commands.Bot):
                 except Exception as e:
                     print(f"❌ Failed to load cog {filename}: {e}")
 
-        # 2) Sync slash commands globally
+        # Sync slash commands globally
         synced = await self.tree.sync()
         print(f"⚡ Synced {len(synced)} slash commands.")
 
@@ -40,8 +40,8 @@ bot = MyBot()
 async def on_ready():
     print(f"▶️ Bot is online as {bot.user} (ID: {bot.user.id})")
 
-# start the keep‑alive webserver (Render/UptimeRobot)
+# Start the keep-alive webserver (Render/UptimeRobot)
 keep_alive()
 
-# finally run the bot
+# Run the bot
 bot.run(TOKEN)
