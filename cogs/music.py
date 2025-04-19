@@ -1,163 +1,114 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import yt_dlp
-import asyncio
-import spotipy
+import yt_dlp, asyncio, spotipy, os
 from spotipy.oauth2 import SpotifyClientCredentials
-import os
 
-FFMPEG_OPTIONS = {
-    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-    'options': '-vn'
+FFMPEG_OPTS = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn"
 }
-
-SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
-SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
-
 sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id=SPOTIFY_CLIENT_ID,
-    client_secret=SPOTIFY_CLIENT_SECRET
+    client_id=os.getenv("SPOTIFY_CLIENT_ID"),
+    client_secret=os.getenv("SPOTIFY_CLIENT_SECRET")
 ))
-
 
 class Music(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.repeat = False
         self.last_url = None
-        self.last_interaction = None
+        self.last_guild = None
 
-    async def join_voice(self, interaction: discord.Interaction):
-        try:
-            if interaction.user.voice:
-                channel = interaction.user.voice.channel
-                vc = interaction.guild.voice_client
-                if vc is None or not vc.is_connected():
-                    await channel.connect()
-                elif vc.channel != channel:
-                    await vc.move_to(channel)
-                return True
-            else:
-                await interaction.response.send_message("❌ You must be in a voice channel.", ephemeral=True)
-                return False
-        except Exception as e:
-            await interaction.response.send_message(f"⚠️ Error: {e}", ephemeral=True)
+    async def join_vc(self, interaction):
+        if not interaction.user.voice:
+            await interaction.response.send_message("❌ Join a VC first.", ephemeral=True)
             return False
+        channel = interaction.user.voice.channel
+        vc = interaction.guild.voice_client
+        if vc and vc.channel != channel:
+            await vc.move_to(channel)
+        elif not vc:
+            await channel.connect()
+        return True
 
-    def get_youtube_url(self, query: str):
-        ydl_opts = {'format': 'bestaudio'}
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(query, download=False)
-                if 'entries' in info:
-                    info = info['entries'][0]
-                return info['url'], info.get('title', 'Unknown'), info.get('webpage_url', query)
-            except Exception as e:
-                print("YouTube search error:", e)
-                return None, None, None
+    def extract_url(self, query):
+        with yt_dlp.YoutubeDL({"format":"bestaudio", "noplaylist":"True"}) as ydl:
+            info = ydl.extract_info(query, download=False)
+            if "entries" in info: info = info["entries"][0]
+            return info["url"], info.get("title","Unknown"), info.get("webpage_url",query)
 
-    def get_spotify_track(self, link: str):
-        try:
-            if "track" in link:
-                track = sp.track(link)
-                name = track['name']
-                artist = track['artists'][0]['name']
-                return f"{name} {artist}"
-        except Exception as e:
-            print("Spotify error:", e)
-        return None
+    def get_spotify(self, link):
+        track = sp.track(link)
+        return f"{track['name']} {track['artists'][0]['name']}"
 
-    @app_commands.command(name="join", description="Join the voice channel")
+    def after_play(self, guild):
+        if self.repeat and self.last_url:
+            asyncio.run_coroutine_threadsafe(self._replay(guild), self.bot.loop)
+
+    async def _replay(self, guild):
+        await asyncio.sleep(1)
+        vc = guild.voice_client
+        if vc and not vc.is_playing():
+            vc.play(discord.FFmpegPCMAudio(self.last_url, **FFMPEG_OPTS), after=lambda e: self.after_play(guild))
+
+    @app_commands.command(name="join", description="Join your voice channel")
     async def join(self, interaction: discord.Interaction):
-        if await self.join_voice(interaction):
-            await interaction.response.send_message("✅ Joined your voice channel!")
+        if await self.join_vc(interaction):
+            await interaction.response.send_message("✅ Joined VC.")
 
     @app_commands.command(name="leave", description="Leave the voice channel")
     async def leave(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
         if vc:
             await vc.disconnect()
-            await interaction.response.send_message("👋 Left the voice channel.")
+            await interaction.response.send_message("👋 Left VC.")
         else:
-            await interaction.response.send_message("❌ I'm not connected to a voice channel.")
+            await interaction.response.send_message("❌ Not in a VC.", ephemeral=True)
 
-    @app_commands.command(name="play", description="Play music from YouTube or Spotify")
-    @app_commands.describe(query="YouTube/Spotify link or search term")
+    @app_commands.command(name="play", description="Play from YouTube or Spotify")
+    @app_commands.describe(query="YouTube URL, Spotify link, or search term")
     async def play(self, interaction: discord.Interaction, query: str):
-        if not await self.join_voice(interaction):
-            return
-
+        if not await self.join_vc(interaction): return
         await interaction.response.defer()
-
         if "spotify.com/track" in query:
-            query = self.get_spotify_track(query)
-            if not query:
-                await interaction.followup.send("❌ Could not fetch song from Spotify.")
-                return
-
-        url, title, page_url = self.get_youtube_url(query)
-        if not url:
-            await interaction.followup.send("❌ Could not find the song.")
-            return
-
-        vc = interaction.guild.voice_client
-        if vc.is_playing():
-            vc.stop()
-
+            query = self.get_spotify(query)
+        url, title, page = self.extract_url(query)
         self.last_url = url
-        self.last_interaction = interaction
+        self.last_guild = interaction.guild
+        vc = interaction.guild.voice_client
+        if vc.is_playing(): vc.stop()
+        vc.play(discord.FFmpegPCMAudio(url, **FFMPEG_OPTS), after=lambda e: self.after_play(interaction.guild))
+        await interaction.followup.send(f"▶️ Now playing **{title}**", embed=discord.Embed().set_image(url=page))
 
-        vc.play(discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS), after=lambda e: self._after_play(interaction.guild))
-
-        await interaction.followup.send(f"🎶 Now playing: **[{title}]({page_url})**")
-
-    def _after_play(self, guild):
-        if self.repeat and self.last_url:
-            coro = self._repeat_play(guild, self.last_url)
-            fut = asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
-            try:
-                fut.result()
-            except Exception as e:
-                print("Repeat error:", e)
-
-    async def _repeat_play(self, guild, url):
-        await asyncio.sleep(1)
-        vc = guild.voice_client
-        if vc and not vc.is_playing():
-            vc.play(discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS), after=lambda e: self._after_play(guild))
-
-    @app_commands.command(name="pause", description="Pause the music")
+    @app_commands.command(name="pause", description="Pause playback")
     async def pause(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
         if vc and vc.is_playing():
-            vc.pause()
-            await interaction.response.send_message("⏸️ Music paused.")
+            vc.pause(); await interaction.response.send_message("⏸️ Paused.")
         else:
-            await interaction.response.send_message("❌ No music is playing.")
+            await interaction.response.send_message("❌ Nothing playing.", ephemeral=True)
 
-    @app_commands.command(name="resume", description="Resume the music")
+    @app_commands.command(name="resume", description="Resume playback")
     async def resume(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
         if vc and vc.is_paused():
-            vc.resume()
-            await interaction.response.send_message("▶️ Music resumed.")
+            vc.resume(); await interaction.response.send_message("▶️ Resumed.")
         else:
-            await interaction.response.send_message("❌ No music is paused.")
+            await interaction.response.send_message("❌ Not paused.", ephemeral=True)
 
-    @app_commands.command(name="stop", description="Stop the music")
+    @app_commands.command(name="stop", description="Stop playback")
     async def stop(self, interaction: discord.Interaction):
         vc = interaction.guild.voice_client
-        if vc and (vc.is_playing() or vc.is_paused()):
-            vc.stop()
-            await interaction.response.send_message("⏹️ Music stopped.")
+        if vc:
+            vc.stop(); await interaction.response.send_message("⏹️ Stopped.")
         else:
-            await interaction.response.send_message("❌ Nothing to stop.")
+            await interaction.response.send_message("❌ Nothing to stop.", ephemeral=True)
 
-    @app_commands.command(name="repeat", description="Toggle repeat (infinite) mode")
+    @app_commands.command(name="repeat", description="Toggle infinite repeat")
     async def repeat(self, interaction: discord.Interaction):
         self.repeat = not self.repeat
-        await interaction.response.send_message(f"🔁 Repeat mode is now {'enabled' if self.repeat else 'disabled'}.")
+        await interaction.response.send_message(f"🔁 Repeat {'enabled' if self.repeat else 'disabled'}.")
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Music(bot))
