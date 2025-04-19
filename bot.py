@@ -30,4 +30,6 @@ async def on_ready():
 keep_alive()
 
 # 5) **This is what actually starts your bot**
+print("⚙️ TOKEN repr:", repr(TOKEN))
+print("⚙️ TOKEN length:", len(TOKEN or ""))
 bot.run(TOKEN)
