@@ -6,7 +6,7 @@ from keep_alive import keep_alive  # optional, for uptime robot pings
 
 load_dotenv()
 
-intents = commands.Intents.all()
+intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 async def load_cogs():
