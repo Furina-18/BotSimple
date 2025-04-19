@@ -1,31 +1,33 @@
 import os
-import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from keep_alive import keep_alive  # Optional
+from keep_alive import keep_alive  # if you’re pinging UptimeRobot
 
+# 1) Load & check token
 load_dotenv()
+TOKEN = os.getenv("TOKEN")
+if not TOKEN:
+    raise RuntimeError("❌ TOKEN not found! Set TOKEN in .env or in your Render environment variables.")
 
+# 2) Define bot & intents
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-async def load_cogs():
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py"):
-            try:
-                await bot.load_extension(f"cogs.{filename[:-3]}")
-                print(f"Loaded: {filename}")
-            except Exception as e:
-                print(f"Failed to load {filename}: {e}")
-
+# 3) Load cogs on startup
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    print("------")
+    for fn in os.listdir("./cogs"):
+        if fn.endswith(".py") and fn != "__init__.py":
+            try:
+                await bot.load_extension(f"cogs.{fn[:-3]}")
+                print(f"✅ Loaded cog {fn}")
+            except Exception as e:
+                print(f"❌ Failed to load {fn}: {e}")
+    print(f"▶️ Logged in as {bot.user} (ID: {bot.user.id})")
 
-async def start_bot():
-    await load_cogs()
-    bot.run(os.getenv("TOKEN"))
+# 4) (Optional) kick off the keep‑alive server
+keep_alive()
 
-keep_alive()  # Comment this out if you're not using UptimeRobot or Flask server
+# 5) **This is what actually starts your bot**
+bot.run(TOKEN)
