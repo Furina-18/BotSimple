@@ -1,22 +1,26 @@
 import discord
-from discord.ext import commands
 from discord import app_commands
-from db import db_manager
+from discord.ext import commands
 
 class ServerStats(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @app_commands.command(name="serverstats", description="Show server statistics")
+    @app_commands.command(
+        name="serverstats",
+        description="Show server statistics"
+    )
     async def serverstats(self, interaction: discord.Interaction):
-        guild = interaction.guild
-        embed = discord.Embed(title="📊 Server Stats", color=discord.Color.green())
-        embed.add_field(name="Members", value=str(guild.member_count))
-        embed.add_field(name="Text Channels", value=str(len(guild.text_channels)))
-        embed.add_field(name="Voice Channels", value=str(len(guild.voice_channels)))
-        embed.set_footer(text=f"Server: {guild.name}")
-
+        g = interaction.guild
+        embed = discord.Embed(
+            title=f"Stats for {g.name}",
+            color=discord.Color.blue()
+        )
+        embed.add_field(name="Members", value=g.member_count)
+        embed.add_field(name="Text Channels", value=len(g.text_channels))
+        embed.add_field(name="Voice Channels", value=len(g.voice_channels))
+        embed.set_thumbnail(url=g.icon.url if g.icon else discord.Embed.Empty)
         await interaction.response.send_message(embed=embed)
 
-async def setup(bot):
+async def setup(bot: commands.Bot):
     await bot.add_cog(ServerStats(bot))
