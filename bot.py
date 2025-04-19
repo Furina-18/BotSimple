@@ -1,58 +1,39 @@
 import os
-import discord
-from discord.ext import commands
-from discord import app_commands
-from keep_alive import keep_alive
-from dotenv import load_dotenv
 import asyncio
+from discord.ext import commands
+from dotenv import load_dotenv
+from keep_alive import keep_alive  # optional, for uptime robot pings
 
 load_dotenv()
-TOKEN = os.getenv("TOKEN")
 
-intents = discord.Intents.all()
+intents = commands.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# At top of bot.py or a separate file like keep_alive.py
-from flask import Flask
-from threading import Thread
-
-app = Flask('')
-
-@app.route('/')
-def home():
-    return "Bot is running!"
-
-def run():
-    app.run(host='0.0.0.0', port=8080)
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
+async def load_cogs():
+    for filename in os.listdir("./cogs"):
+        if filename.endswith(".py"):
+            try:
+                await bot.load_extension(f"cogs.{filename[:-3]}")
+                print(f"Loaded: {filename}")
+            except Exception as e:
+                print(f"Failed to load {filename}: {e}")
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} slash commands.")
-    except Exception as e:
-        print(f"Failed to sync commands: {e}")
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    print("------")
 
-@bot.tree.command(name="ping", description="Test if bot is alive")
-async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("Pong!")
+async def start_bot():
+    await load_cogs()
+    await bot.start(os.getenv("TOKEN"))
 
-# Auto-load cogs
-async def load_cogs():
-    for filename in os.listdir("./cogs"):
-        if filename.endswith(".py") and filename != "__init__.py":
-            await bot.load_extension(f"cogs.{filename[:-3]}")
+# Web ping for UptimeRobot (if you're using it)
+keep_alive()
 
-async def main():
-    async with bot:
-        await load_cogs()
-        keep_alive()
-        bot.run(os.getenv("TOKEN"))
-
-asyncio.run(main())
+# Use this for Render: prevents crash when already in an event loop
+try:
+    asyncio.run(start_bot())
+except RuntimeError:
+    import nest_asyncio
+    nest_asyncio.apply()
+    asyncio.get_event_loop().run_until_complete(start_bot())
