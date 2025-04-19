@@ -32,5 +32,7 @@ bot = MyBot()
 @bot.event
 async def on_ready():
     print(f"✅ Bot is ready: {bot.user} (ID: {bot.user.id})")
+    
+keep_alive()
 
 bot.run(TOKEN)
