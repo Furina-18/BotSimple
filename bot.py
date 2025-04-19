@@ -53,6 +53,6 @@ async def main():
     async with bot:
         await load_cogs()
         keep_alive()
-        await bot.run(os.getenv("TOKEN"))
+        bot.run(os.getenv("TOKEN"))
 
 asyncio.run(main())
