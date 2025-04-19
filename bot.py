@@ -29,8 +29,3 @@ async def start_bot():
     bot.run(os.getenv("TOKEN"))
 
 keep_alive()  # Comment this out if you're not using UptimeRobot or Flask server
-    
-except RuntimeError:
-    import nest_asyncio
-    nest_asyncio.apply()
-    asyncio.get_event_loop().run_until_complete(start_bot())
