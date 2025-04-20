@@ -36,15 +36,18 @@ async def on_ready():
     print(f"✅ Bot is ready: {bot.user} (ID: {bot.user.id})")
 @bot.event
 async def on_ready():
-    if not wavelink.NodePool.nodes:
-        await wavelink.NodePool.create_node(
-            bot=bot,
-            host='127.0.0.1',  # or 'lavalink' if using Docker
-            port=2333,
-            password='youshallnotpass',
-            https=False
-        )
-    print(f"Bot connected as {bot.user}")
+    try:
+        if not wavelink.NodePool.nodes:
+            await wavelink.NodePool.create_node(
+                bot=bot,
+                host='127.0.0.1',
+                port=2333,
+                password='youshallnotpass',
+                https=False
+            )
+        print("Lavalink node connected.")
+    except Exception as e:
+        print(f"Failed to connect to Lavalink: {e}")
     
 keep_alive()
 
