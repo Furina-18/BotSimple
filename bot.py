@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 from keep_alive import keep_alive
+import wavelink
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -33,6 +34,14 @@ bot = MyBot()
 @bot.event
 async def on_ready():
     print(f"✅ Bot is ready: {bot.user} (ID: {bot.user.id})")
+@bot.event
+async def on_connect():
+    # Connect to Lavalink node
+    await wavelink.NodePool.create_node(bot=bot,
+                                        host='localhost',
+                                        port=2333,
+                                        password='youshallnotpass',
+                                        https=False)
     
 keep_alive()
 
