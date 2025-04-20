@@ -58,14 +58,13 @@ class Music(commands.Cog):
         if await self.join_vc(interaction):
             await interaction.response.send_message("✅ Joined VC.")
 
-    @app_commands.command(name="leave", description="Leave the voice channel")
-    async def leave(self, interaction: discord.Interaction):
-        vc = interaction.guild.voice_client
-        if vc:
-            await vc.disconnect()
-            await interaction.response.send_message("👋 Left VC.")
+    @app_commands.command(name="leave", description="Disconnect the bot from the voice channel.")
+    async def leave(self, ctx):
+        if ctx.voice_client is not None:
+           await ctx.voice_client.disconnect()
+            await ctx.send("Disconnected from the voice channel.")
         else:
-            await interaction.response.send_message("❌ Not in a VC.", ephemeral=True)
+            await ctx.send("I'm not connected to any voice channel.")
 
       @app_commands.command(name="youtube_play", description="Play a YouTube video by URL or search.")
     async def youtube_play(self, interaction: discord.Interaction, query: str):
