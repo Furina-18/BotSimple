@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import yt_dlp, asyncio, spotipy, os
+import wavelink
 from spotipy.oauth2 import SpotifyClientCredentials
 
 FFMPEG_OPTS = {
@@ -66,20 +67,44 @@ class Music(commands.Cog):
         else:
             await interaction.response.send_message("❌ Not in a VC.", ephemeral=True)
 
-    @app_commands.command(name="play", description="Play from YouTube or Spotify")
-    @app_commands.describe(query="YouTube URL, Spotify link, or search term")
-    async def play(self, interaction: discord.Interaction, query: str):
-        if not await self.join_vc(interaction): return
+      @app_commands.command(name="youtube_play", description="Play a YouTube video by URL or search.")
+    async def youtube_play(self, interaction: discord.Interaction, query: str):
         await interaction.response.defer()
-        if "spotify.com/track" in query:
-            query = self.get_spotify(query)
-        url, title, page = self.extract_url(query)
-        self.last_url = url
-        self.last_guild = interaction.guild
-        vc = interaction.guild.voice_client
-        if vc.is_playing(): vc.stop()
-        vc.play(discord.FFmpegPCMAudio(url, **FFMPEG_OPTS), after=lambda e: self.after_play(interaction.guild))
-        await interaction.followup.send(f"▶️ Now playing **{title}**", embed=discord.Embed().set_image(url=page))
+        vc = await self.ensure_voice(interaction)
+        if not vc:
+            return
+
+        # Direct URL or YouTube search
+        if not re.match(r'https?://', query):
+            query = f'ytsearch:{query}'
+
+        tracks = await wavelink.YouTubeTrack.search(query)
+        if not tracks:
+            await interaction.followup.send("No tracks found.")
+            return
+
+        track = tracks[0]
+        await vc.play(track)
+        await interaction.followup.send(f"Now playing: **{track.title}**")
+
+    @app_commands.command(name="spotify_play", description="Play a Spotify track by searching it on YouTube.")
+    async def spotify_play(self, interaction: discord.Interaction, query: str):
+        await interaction.response.defer()
+        vc = await self.ensure_voice(interaction)
+        if not vc:
+            return
+
+        # You can improve this using Spotipy to get exact metadata.
+        query = f"ytsearch:{query}"
+        tracks = await wavelink.YouTubeTrack.search(query)
+        if not tracks:
+            await interaction.followup.send("No related tracks found on YouTube.")
+            return
+
+        track = tracks[0]
+        await vc.play(track)
+        await interaction.followup.send(f"Now playing (from Spotify): **{track.title}**")
+
 
     @app_commands.command(name="pause", description="Pause playback")
     async def pause(self, interaction: discord.Interaction):
