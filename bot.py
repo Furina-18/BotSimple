@@ -35,13 +35,16 @@ bot = MyBot()
 async def on_ready():
     print(f"✅ Bot is ready: {bot.user} (ID: {bot.user.id})")
 @bot.event
-async def on_connect():
-    # Connect to Lavalink node
-    await wavelink.NodePool.create_node(bot=bot,
-                                        host='localhost',
-                                        port=2333,
-                                        password='youshallnotpass',
-                                        https=False)
+async def on_ready():
+    if not wavelink.NodePool.nodes:
+        await wavelink.NodePool.create_node(
+            bot=bot,
+            host='127.0.0.1',  # or 'lavalink' if using Docker
+            port=2333,
+            password='youshallnotpass',
+            https=False
+        )
+    print(f"Bot connected as {bot.user}")
     
 keep_alive()
 
