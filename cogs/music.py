@@ -5,14 +5,6 @@ import yt_dlp, asyncio, spotipy, os
 import wavelink
 from spotipy.oauth2 import SpotifyClientCredentials
 
-FFMPEG_OPTS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-    "options": "-vn"
-}
-sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-    client_id=os.getenv("SPOTIFY_CLIENT_ID"),
-    client_secret=os.getenv("SPOTIFY_CLIENT_SECRET")
-))
 
 class Music(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -21,18 +13,25 @@ class Music(commands.Cog):
         self.last_url = None
         self.last_guild = None
 
-    async def join_vc(self, interaction):
-        if not interaction.user.voice:
-            await interaction.response.send_message("❌ Join a VC first.", ephemeral=True)
-            return False
-        channel = interaction.user.voice.channel
-        vc = interaction.guild.voice_client
-        if vc and vc.channel != channel:
-            await vc.move_to(channel)
-        elif not vc:
-            await channel.connect()
-        return True
+   class Music(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
+    async def ensure_voice(self, interaction: discord.Interaction):
+        """Ensure bot connects to a voice channel if not already."""
+        if not interaction.user.voice or not interaction.user.voice.channel:
+            await interaction.response.send_message("❌ You must be in a voice channel!", ephemeral=True)
+            return None
+
+        channel = interaction.user.voice.channel
+        node = wavelink.NodePool.get_node()
+
+        if not interaction.guild.voice_client:
+            vc: wavelink.Player = await channel.connect(cls=wavelink.Player)
+        else:
+            vc: wavelink.Player = interaction.guild.voice_client
+
+        return vc
     def extract_url(self, query):
         with yt_dlp.YoutubeDL({"format":"bestaudio", "noplaylist":"True"}) as ydl:
             info = ydl.extract_info(query, download=False)
@@ -53,18 +52,22 @@ class Music(commands.Cog):
         if vc and not vc.is_playing():
             vc.play(discord.FFmpegPCMAudio(self.last_url, **FFMPEG_OPTS), after=lambda e: self.after_play(guild))
 
-    @app_commands.command(name="join", description="Join your voice channel")
+      @app_commands.command(name="join", description="Bot joins your voice channel.")
     async def join(self, interaction: discord.Interaction):
-        if await self.join_vc(interaction):
-            await interaction.response.send_message("✅ Joined VC.")
+        await interaction.response.defer(ephemeral=True)
+        vc = await self.ensure_voice(interaction)
+        if vc:
+            await interaction.followup.send(f"✅ Joined `{vc.channel.name}`")
 
-    @app_commands.command(name="leave", description="Disconnect the bot from the voice channel.")
-    async def leave(self, ctx):
-        if ctx.voice_client is not None:
-           await ctx.voice_client.disconnect()
-            await ctx.send("Disconnected from the voice channel.")
-        else:
-            await ctx.send("I'm not connected to any voice channel.")
+    @app_commands.command(name="leave", description="Bot leaves the voice channel.")
+    async def leave(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        vc: wavelink.Player = interaction.guild.voice_client
+        if not vc:
+            await interaction.followup.send("❌ I'm not connected to a voice channel.")
+            return
+        await vc.disconnect()
+        await interaction.followup.send("👋 Disconnected from the voice channel.")
 
       @app_commands.command(name="youtube_play", description="Play a YouTube video by URL or search.")
     async def youtube_play(self, interaction: discord.Interaction, query: str):
