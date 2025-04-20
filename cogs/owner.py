@@ -2,6 +2,14 @@ import discord, os, sys
 from discord import app_commands
 from discord.ext import commands
 
+owner_id = os.getenv("OWNER_ID")
+if not owner_id:
+    await interaction.response.send_message("OWNER_ID is not set in the environment.", ephemeral=True)
+    return
+
+if interaction.user.id != int(owner_id):
+    await interaction.response.send_message("You are not the bot owner.", ephemeral=True)
+    return
 class Owner(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
