@@ -4,6 +4,9 @@ from discord import app_commands
 import yt_dlp, asyncio, spotipy, os
 import wavelink
 from spotipy.oauth2 import SpotifyClientCredentials
+from utils.spotify import get_spotify_client
+
+sp = get_spotify_client()
 
 
 class Music(commands.Cog):
